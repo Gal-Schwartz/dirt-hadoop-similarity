@@ -3,6 +3,8 @@ package com.dirt;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.FileSystem;
+// Explicitly using Hadoop Text
 import org.apache.hadoop.io.*; 
 import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.*;
@@ -13,9 +15,6 @@ import org.apache.hadoop.util.ToolRunner;
 import java.io.*;
 import java.net.URI;
 import java.util.*;
-
-// Explicitly using Hadoop Text
-import org.apache.hadoop.io.Text;
 
 public class DirtDriver extends Configured implements Tool {
 
@@ -262,6 +261,7 @@ public class DirtDriver extends Configured implements Tool {
             private java.util.Map<String, Long> wordMargins = new HashMap<>();
             @Override protected void setup(Context context) throws IOException {
                 URI[] files = context.getCacheFiles();
+                System.err.println("--- SETUP START ---"); 
                 if (files != null) {
                     for (URI uri : files) {
                         try (BufferedReader br = new BufferedReader(new FileReader(new File(uri.getPath())))) {
@@ -278,6 +278,11 @@ public class DirtDriver extends Configured implements Tool {
                         }
                     }
                 }
+                else{
+                    System.err.println("WARNING: No cache files found!");
+
+                }
+                System.err.println("Total WordMargins loaded: " + wordMargins.size());
             }
             @Override protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
                 String line = value.toString();
