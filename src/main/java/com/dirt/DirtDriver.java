@@ -367,6 +367,7 @@ public static class Reduce extends Reducer<PathSlotKey, Text, Text, Text> {
     public static class Job3_Overlap {
         public static class Map extends Mapper<LongWritable, Text, Text, Text> {
             private java.util.Map<String, List<String>> neighbors = new HashMap<>();
+            private final PorterStemmer stemmer = new PorterStemmer();
 
             @Override protected void setup(Context context) throws IOException {
                 URI[] files = context.getCacheFiles();
@@ -378,6 +379,38 @@ public static class Reduce extends Reducer<PathSlotKey, Text, Text, Text> {
                     }
                 }
             }
+
+            private String convertPhraseToPath(String phrase) {
+                // 1. נקה את ה-X בהתחלה וה-Y בסוף
+                String inner = phrase.replaceAll("^X\\s+", "").replaceAll("\\s+Y$", "");
+                String[] words = inner.split(" ");
+                
+                // מקרה 1: פועל בודד (למשל "X cause Y")
+                if (words.length == 1) {
+                    String vStem = stemmer.stem(words[0]); // המרה ל-caus
+                    // אנו מניחים מבנה סטנדרטי של נושא-פועל-מושא ישיר
+                    // שימי לב: התבנית כאן מנסה לחקות את הפלט שראינו ב-Job 2
+                    // אם הפארסר שלך מייצר כיוונים (< >), זה אמור להיראות כך:
+                    return "N:<nsubj:V:" + vStem + ":>dobj:N";
+                }
+                
+                // מקרה 2: פועל + מילת יחס (למשל "X confuse with Y")
+                if (words.length == 2) {
+                    String vStem = stemmer.stem(words[0]);
+                    String prep = words[1];
+                    // מבנה משוער: N -> V -> Prep -> N
+                    return "N:<nsubj:V:" + vStem + ":>prep:P:" + prep + ":>pobj:N";
+                }
+                
+                // מקרה 3: סביל (למשל "X cause by Y")
+                if (words.length == 2 && words[1].equals("by")) {
+                     String vStem = stemmer.stem(words[0]);
+                     // מבנה סביל טיפוסי
+                     return "N:<nsubjpass:V:" + vStem + ":>agent:P:by:>pobj:N";
+                }
+
+                return null; // לא הצלחנו לתרגם, נדלג על השורה הזו
+            }
             
             private void loadTestSet(File file) throws IOException {
                 try (BufferedReader br = new BufferedReader(new FileReader(file))) {
@@ -385,8 +418,15 @@ public static class Reduce extends Reducer<PathSlotKey, Text, Text, Text> {
                     while ((line = br.readLine()) != null) {
                         String[] p = line.split("\t");
                         if (p.length >= 2) {
-                            neighbors.computeIfAbsent(p[0], k -> new ArrayList<>()).add(p[1]);
-                            neighbors.computeIfAbsent(p[1], k -> new ArrayList<>()).add(p[0]);
+                            // כאן הקסם קורה: ממירים את המחרוזות לפני ששומרים במפה
+                            String path1 = convertPhraseToPath(p[0]);
+                            String path2 = convertPhraseToPath(p[1]);
+                            
+                            // רק אם ההמרה הצליחה לשני הצדדים, שומרים את הזוג
+                            if (path1 != null && path2 != null) {
+                                neighbors.computeIfAbsent(path1, k -> new ArrayList<>()).add(path2);
+                                neighbors.computeIfAbsent(path2, k -> new ArrayList<>()).add(path1);
+                            }
                         }
                     }
                 }
@@ -525,7 +565,7 @@ public static class Reduce extends Reducer<PathSlotKey, Text, Text, Text> {
         MultipleOutputs.addNamedOutput(j1, "pathmargins", TextOutputFormat.class, Text.class, LongWritable.class);
         MultipleOutputs.addNamedOutput(j1, "wordmargins", TextOutputFormat.class, Text.class, LongWritable.class);
         MultipleOutputs.addNamedOutput(j1, "global", TextOutputFormat.class, Text.class, LongWritable.class);
-        FileInputFormat.addInputPath(j1, new Path(input));
+        FileInputFormat.addInputPaths(j1, input);
         FileOutputFormat.setOutputPath(j1, new Path(out1));
         if (!j1.waitForCompletion(true)) return 1;
 
@@ -578,6 +618,7 @@ public static class Reduce extends Reducer<PathSlotKey, Text, Text, Text> {
         j4.setMapperClass(Job4_FinalSim.Map.class);
         j4.setReducerClass(Job4_FinalSim.Reduce.class);
         j4.setOutputKeyClass(Text.class); j4.setOutputValueClass(DoubleWritable.class);
+        j4.setMapOutputValueClass(Text.class);
         FileInputFormat.addInputPath(j4, new Path(out3));
         FileOutputFormat.setOutputPath(j4, new Path(out4));
         
