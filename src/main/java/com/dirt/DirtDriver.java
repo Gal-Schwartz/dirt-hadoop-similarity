@@ -4,19 +4,12 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.FileSystem;
-// Explicitly using Hadoop Text
-import org.apache.hadoop.io.*; 
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.*;
 import org.apache.hadoop.mapreduce.lib.output.*;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-
-import com.dirt.DirtDriver.Job1_Extraction;
-import com.dirt.DirtDriver.Job25_SumMI;
-import com.dirt.DirtDriver.Job2_MI;
-import com.dirt.DirtDriver.PathSlotGroupingComparator;
-import com.dirt.DirtDriver.PathSlotKey;
 
 import java.io.*;
 import java.net.URI;
@@ -261,46 +254,26 @@ public class DirtDriver extends Configured implements Tool {
         }
     }
 
-    // --- JOB 2: MI Calculation (Fixed) ---
+    // --- JOB 2: MI Calculation (FIXED) ---
     public static class Job2_MI {
         public static class Map extends Mapper<LongWritable, Text, PathSlotKey, Text> {
             private java.util.Map<String, Long> wordMargins = new HashMap<>();
-            
             @Override protected void setup(Context context) throws IOException {
-                // Debugging for local file listing
-                System.err.println("DEBUG: --- Listing Local Working Directory ---");
-                File curDir = new File(".");
-                File[] ls = curDir.listFiles();
-                if (ls != null) {
-                    for (File f : ls) {
-                        System.err.println("DEBUG: Found local file: " + f.getName() + " (Size: " + f.length() + ")");
-                    }
-                }
-                
                 URI[] files = context.getCacheFiles();
                 if (files != null) {
                     for (URI uri : files) {
-                        String filename = new Path(uri).getName();
-                        File localFile = new File(filename);
-                        System.err.println("DEBUG: Reading cache file: " + filename);
-                        
-                        try (BufferedReader br = new BufferedReader(new FileReader(localFile))) {
+                        try (BufferedReader br = new BufferedReader(new FileReader(new File(new Path(uri).getName())))) {
                             String line;
                             while ((line = br.readLine()) != null) {
                                 String[] p = line.split("\t");
-                                // Expect: SW_MARGIN  type  word  count
-                                if (p.length >= 4) {
+                                if (p.length >= 4 && line.startsWith("SW_MARGIN")) {
                                     wordMargins.put(p[1] + "|" + p[2], Long.parseLong(p[3]));
                                 }
                             }
-                        } catch (Exception e) {
-                             System.err.println("DEBUG: Error reading " + filename + ": " + e.getMessage());
-                        }
+                        } catch (Exception e) {}
                     }
                 }
-                System.err.println("DEBUG: Total wordMargins loaded: " + wordMargins.size());
             }
-
             @Override protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
                 String line = value.toString();
                 String[] p = line.split("\t");
@@ -308,47 +281,65 @@ public class DirtDriver extends Configured implements Tool {
                 if (line.startsWith("PS_MARGIN") && p.length >= 4) {
                     context.write(new PathSlotKey(p[1], p[2], 0), new Text(p[3]));
                 } else if (line.startsWith("TRIPLE") && p.length >= 5) {
-                    Long sw = wordMargins.get(p[2] + "|" + p[3]); // Look up X|word
+                    Long sw = wordMargins.get(p[2] + "|" + p[3]); 
                     if (sw != null) {
                         context.write(new PathSlotKey(p[1], p[2], 1), new Text(p[3] + "\t" + p[4] + "\t" + sw));
                     }
                 }
             }
         }
-
-        public static class Reduce extends Reducer<PathSlotKey, Text, Text, Text> {
+        
+public static class Reduce extends Reducer<PathSlotKey, Text, Text, Text> {
             private long N = 1;
-            @Override protected void setup(Context context) { N = context.getConfiguration().getLong("GLOBAL_N", 1); }
             
-            @Override protected void reduce(PathSlotKey key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            @Override 
+            protected void setup(Context context) { 
+                N = context.getConfiguration().getLong("GLOBAL_N", 1); 
+            }
+
+            @Override 
+            protected void reduce(PathSlotKey key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
                 Iterator<Text> it = values.iterator();
                 if (!it.hasNext()) return;
-                
+
+                // 1. נסיון לקרוא את ה-Margin (האיבר הראשון) בצורה בטוחה
                 String firstVal = it.next().toString();
                 long psCount = 0;
-                
-                // Robust check for missing margins
+
+                // בדיקת הגנה: אם האיבר הראשון מכיל טאב, זה לא Margin אלא Triple!
+                // זה אומר שאין Margin למסלול הזה -> חייבים לדלג כדי לא לקרוס
+                if (firstVal.contains("\t")) {
+                    return; 
+                }
+
                 try {
                     psCount = Long.parseLong(firstVal);
                 } catch (NumberFormatException e) {
-                    return; // Skip if margin missing
+                    return; 
                 }
-                
+                // 2. מעבר על שאר האיברים (Triples)
                 while (it.hasNext()) {
-                    String val = it.next().toString();
-                    String[] data = val.split("\t"); 
+                    String valStr = it.next().toString();
+                    String[] data = valStr.split("\t"); // הפורמט: word, tripCount, swCount
                     
                     if (data.length < 3) continue;
 
                     try {
-                        double countTriple = Double.parseDouble(data[1]);
-                        double countWord = Double.parseDouble(data[2]);
-                        
-                        double mi = Math.log((countTriple * (double)N) / (psCount * countWord));
-                        
-                        context.write(key.path, new Text(key.slot.toString() + "\t" + data[0] + "\t" + mi));
-                    } catch (NumberFormatException e) {
-                        // Ignore malformed
+                        String word = data[0];
+                        long tripleCount = Long.parseLong(data[1]);
+                        long swCount = Long.parseLong(data[2]);
+
+                        double numerator = (double) tripleCount * N;
+                        double denominator = (double) psCount * swCount;
+
+                        if (numerator > 0 && denominator > 0) {
+                            double mi = Math.log(numerator / denominator);
+                            if (mi > 0.001) {
+                                // פלט בטוח
+                                context.write(key.path, new Text(key.slot.toString() + "\t" + word + "\t" + mi));
+                            }
+                        }
+                    } catch (Exception e) {
                     }
                 }
             }
@@ -372,77 +363,30 @@ public class DirtDriver extends Configured implements Tool {
         }
     }
 
-    // --- JOB 3: Overlap (FIXED LOGIC) ---
-    
-         public static class Job3_Overlap {
+    // --- JOB 3: Overlap ---
+    public static class Job3_Overlap {
         public static class Map extends Mapper<LongWritable, Text, Text, Text> {
             private java.util.Map<String, List<String>> neighbors = new HashMap<>();
-            
-            // אנחנו יוצרים מופע של ה-Stemmer כדי לנקות את הפעלים ב-TestSet
-            // זה מבטיח שאם המערכת למדה "caus", נחפש בטסט "caus" ולא "cause"
-            private final PorterStemmer stemmer = new PorterStemmer(); 
 
             @Override protected void setup(Context context) throws IOException {
                 URI[] files = context.getCacheFiles();
                 if (files != null) {
                     for (URI uri : files) {
                         try {
-                            // טעינת הקובץ בצורה בטוחה
                             loadTestSet(new File(new Path(uri).getName()));
                         } catch (Exception e) {}
                     }
                 }
             }
             
-            // --- הפונקציה החדשה: המרה מ-"X cause Y" לפורמט המערכת ---
-            // המערכת שלך מייצרת: "N:rel:V:verb:rel:N"
-            private String convertPhraseToPath(String phrase) {
-                // 1. נקה את ה-X בהתחלה וה-Y בסוף
-                String inner = phrase.replaceAll("^X\\s+", "").replaceAll("\\s+Y$", "");
-                String[] words = inner.split(" ");
-                
-                // מקרה 1: פועל בודד (למשל "X cause Y")
-                if (words.length == 1) {
-                    String vStem = stemmer.stem(words[0]); // המרה ל-caus
-                    // אנו מניחים מבנה סטנדרטי של נושא-פועל-מושא ישיר
-                    // שימי לב: התבנית כאן מנסה לחקות את הפלט שראינו ב-Job 2
-                    // אם הפארסר שלך מייצר כיוונים (< >), זה אמור להיראות כך:
-                    return "N:<nsubj:V:" + vStem + ":>dobj:N";
-                }
-                
-                // מקרה 2: פועל + מילת יחס (למשל "X confuse with Y")
-                if (words.length == 2) {
-                    String vStem = stemmer.stem(words[0]);
-                    String prep = words[1];
-                    // מבנה משוער: N -> V -> Prep -> N
-                    return "N:<nsubj:V:" + vStem + ":>prep:P:" + prep + ":>pobj:N";
-                }
-                
-                // מקרה 3: סביל (למשל "X cause by Y")
-                if (words.length == 2 && words[1].equals("by")) {
-                     String vStem = stemmer.stem(words[0]);
-                     // מבנה סביל טיפוסי
-                     return "N:<nsubjpass:V:" + vStem + ":>agent:P:by:>pobj:N";
-                }
-
-                return null; // לא הצלחנו לתרגם, נדלג על השורה הזו
-            }
-
             private void loadTestSet(File file) throws IOException {
                 try (BufferedReader br = new BufferedReader(new FileReader(file))) {
                     String line;
                     while ((line = br.readLine()) != null) {
                         String[] p = line.split("\t");
                         if (p.length >= 2) {
-                            // כאן הקסם קורה: ממירים את המחרוזות לפני ששומרים במפה
-                            String path1 = convertPhraseToPath(p[0]);
-                            String path2 = convertPhraseToPath(p[1]);
-                            
-                            // רק אם ההמרה הצליחה לשני הצדדים, שומרים את הזוג
-                            if (path1 != null && path2 != null) {
-                                neighbors.computeIfAbsent(path1, k -> new ArrayList<>()).add(path2);
-                                neighbors.computeIfAbsent(path2, k -> new ArrayList<>()).add(path1);
-                            }
+                            neighbors.computeIfAbsent(p[0], k -> new ArrayList<>()).add(p[1]);
+                            neighbors.computeIfAbsent(p[1], k -> new ArrayList<>()).add(p[0]);
                         }
                     }
                 }
@@ -451,10 +395,7 @@ public class DirtDriver extends Configured implements Tool {
             @Override protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
                 String[] parts = value.toString().split("\t");
                 if (parts.length < 4) return;
-                
-                String path = parts[0]; // זה הפסוק שמגיע מהמערכת שלך (Job 2)
-                
-                // עכשיו path אמור להיות זהה בפורמט למפתחות ב-neighbors
+                String path = parts[0];
                 if (neighbors.containsKey(path)) {
                     String featureVal = parts[1] + "\t" + parts[2] + "\t" + parts[3];
                     for (String other : neighbors.get(path)) {
@@ -465,7 +406,6 @@ public class DirtDriver extends Configured implements Tool {
                 }
             }
         }
-        
         public static class Reduce extends Reducer<Text, Text, Text, Text> {
             @Override protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
                 String[] keyPaths = key.toString().split("\t");
@@ -490,8 +430,10 @@ public class DirtDriver extends Configured implements Tool {
                 for (String feat : v1.keySet()) {
                     if (v2.containsKey(feat)) {
                         double sum = v1.get(feat) + v2.get(feat);
+                        // --- FIX: Use startsWith to match "X:word" or "Y:word" ---
                         if (feat.startsWith("X:")) numX += sum;
                         else if (feat.startsWith("Y:")) numY += sum;
+                        // ---------------------------------------------------------
                     }
                 }
                 context.write(key, new Text(numX + "\t" + numY));
@@ -499,7 +441,7 @@ public class DirtDriver extends Configured implements Tool {
         }
     }
 
-    // --- JOB 4: Final Similarity (FIXED PARSING) ---
+    // --- JOB 4: Final Similarity ---
     public static class Job4_FinalSim {
         public static class Map extends Mapper<LongWritable, Text, Text, Text> {
             @Override protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
@@ -518,18 +460,20 @@ public class DirtDriver extends Configured implements Tool {
                              String line;
                              while ((line = br.readLine()) != null) {
                                  String[] p = line.split("\t");
-                                 // --- FIX IS HERE: Parse p[2] as Double, not p[1] ---
+                                 // --- FIX: Read p[2] for Sum (p[0]=Path, p[1]=Slot, p[2]=Sum) ---
                                  if (p.length >= 3) {
-                                    sumMIs.put(p[0] + "\t" + p[1], Double.parseDouble(p[2]));
+                                     sumMIs.put(p[0] + "\t" + p[1], Double.parseDouble(p[2]));
                                  }
+                                 // ---------------------------------------------------------------
                              }
-                        } catch(Exception e) {}
+                         } catch(Exception e) {}
                     }
                 }
             }
-           
+            
             @Override protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
                 String[] paths = key.toString().split("\t");
+                if (paths.length < 2) return;
                 double numX = 0, numY = 0;
                 for (Text val : values) {
                     String[] nums = val.toString().split("\t");
@@ -560,6 +504,7 @@ public class DirtDriver extends Configured implements Tool {
         }
         String input = args[0];
         
+        // Hardcoded paths as per Partner's setup (Ensure these buckets exist!)
         String outputBase = "s3://lexico-syntactic-similarities/output";
         String testSetBase = "s3://lexico-syntactic-similarities/TestSet"; 
 
@@ -584,15 +529,12 @@ public class DirtDriver extends Configured implements Tool {
         FileOutputFormat.setOutputPath(j1, new Path(out1));
         if (!j1.waitForCompletion(true)) return 1;
 
-        // Load Global N
         long globalN = readTotalN(conf, new Path(out1), "global");
         conf.setLong("GLOBAL_N", globalN);
-        System.out.println("DEBUG: Calculated Global N = " + globalN);
 
         // JOB 2
         Job j2 = Job.getInstance(conf, "DIRT_2_MI");
         j2.setJarByClass(DirtDriver.class);
-        
         addCacheFilesWithPrefix(j2, conf, new Path(out1), "wordmargins");
         
         j2.setMapperClass(Job2_MI.Map.class);
@@ -620,10 +562,8 @@ public class DirtDriver extends Configured implements Tool {
         // JOB 3
         Job j3 = Job.getInstance(conf, "DIRT_3_Overlap");
         j3.setJarByClass(DirtDriver.class);
-        // FIX: Add '#name' fragment to force local filename
-        j3.addCacheFile(new URI(testSetBase + "/positive-preds.txt#positive-preds.txt"));
-        j3.addCacheFile(new URI(testSetBase + "/negative-preds.txt#negative-preds.txt"));
-        
+        j3.addCacheFile(new URI(testSetBase + "/positive-preds.txt"));
+        j3.addCacheFile(new URI(testSetBase + "/negative-preds.txt"));
         j3.setMapperClass(Job3_Overlap.Map.class);
         j3.setReducerClass(Job3_Overlap.Reduce.class);
         j3.setOutputKeyClass(Text.class); j3.setOutputValueClass(Text.class);
@@ -652,13 +592,7 @@ public class DirtDriver extends Configured implements Tool {
             FileStatus[] stats = fs.listStatus(parentDir);
             for (FileStatus stat : stats) {
                 if (stat.getPath().getName().startsWith(prefix)) {
-                    // FIX: Create URI with Fragment (#) to force the local filename
-                    String uriStr = stat.getPath().toUri().toString() + "#" + stat.getPath().getName();
-                    try {
-                        job.addCacheFile(new URI(uriStr));
-                    } catch (Exception e) {
-                        throw new IOException(e);
-                    }
+                    job.addCacheFile(stat.getPath().toUri());
                 }
             }
         }
