@@ -18,9 +18,9 @@ The table below summarizes the performance metrics calculated at the optimal F1 
 | Metric | Small Dataset (10 Files) | Large Dataset (100 Files) |
 | :--- | :--- | :--- |
 | **Pairs Found** | 5 | 538 |
-| **Optimal Threshold** | 0.0285 | 0.0042 |
+| **Optimal Threshold** | 0.028530 | 0.004192 |
 | **Precision** | **1.0000 (100%)** | **0.9797 (98%)** |
-| **Recall** | 0.0008 (0.08%) | 0.1214 (12.1%) |
+| **Recall** | 0.0008 (0.08%) | 0.1214 (12.14%) |
 | **F1 Score** | 0.0017 | **0.2161** |
 
 ### Analysis of Results
@@ -31,7 +31,7 @@ The table below summarizes the performance metrics calculated at the optimal F1 
 
 ### Small Dataset Graph
 * **Observation:** The graph for the small dataset appears empty or degenerated to a single point.
-* **Analysis:** This is expected behavior. Since the system only identified **one** true positive pair (`affect` $\leftrightarrow$ `attack`) out of 1,194 possible pairs, the Recall axis effectively stays at 0. The curve consists of a single point at $(x \approx 0, y=1.0)$. This visualizes the extreme lack of coverage caused by the small corpus size.
+* **Analysis:** This is expected behavior. In the small run, almost all candidate pairs have **score 0.0** (i.e., they are not assigned any non-zero similarity), so there are effectively **no non-zero points** to trace into a curve. With only one scored true positive (`affect` ↔ `attack`) and the rest at 0.0, changing the threshold cannot create additional points, so the plot collapses to a single visible point near $(x \approx 0, y=1.0)$.
 * <img width="800" height="600" alt="precision_recall_curve" src="https://github.com/user-attachments/assets/8138a9ab-79be-4174-a695-2eb8c5720e72" />
 
 
@@ -42,44 +42,81 @@ The table below summarizes the performance metrics calculated at the optimal F1 
 
 
 ## 4. Error Analysis
-This section analyzes specific examples and **compares their similarity scores** between the Small (10 files) and Large (100 files) datasets.
+This section lists **5 examples** for each category (TP/FP/TN/FN) and compares their similarity scores between the Small (10 files) and Large (100 files) runs.
 
-### 4.1 True Positives (High Scoring Matches)
-The table below compares successful detections. Note that due to data sparsity, the Small dataset failed to find these pairs (Score 0.0).
+**Note:** If a pair does not appear in the system output, it is treated as having **score 0.0** (i.e., below the reporting threshold).
 
-| Pair (Path A $\leftrightarrow$ Path B) | Score (Large) | Score (Small) | Analysis |
-| :--- | :--- | :--- | :--- |
-| `lead to` $\leftrightarrow$ `result in` | **0.1536** | 0.0 | Correct identification of causality. The 100-file corpus provided enough context to link these transitive verbs. |
-| `die from` $\leftrightarrow$ `die of` | **0.1309** | 0.0 | Correctly handles prepositional variation. The system learned that "from" and "of" are interchangeable here. |
-| `protect against` $\leftrightarrow$ `protect from` | **0.1075** | 0.0 | Another successful identification of interchangeable prepositions. |
-| `consist of` $\leftrightarrow$ `contain` | **0.0983** | 0.0 | Identifies a part-whole relationship (Meronymy) that functions as a synonym in many contexts. |
-| `affect` $\leftrightarrow$ `attack` | 0.0285 | **0.0285** | **The only pair found in both.** It shows that highly common verbs can be detected even in small datasets. |
+### 4.1 True Positives (System: Yes, Truth: Yes)
+| Pair (Path A ↔ Path B) | Score (Large) | Score (Small) |
+| :--- | ---: | ---: |
+| `lead to` ↔ `result in` | **0.1536** | - |
+| `die from` ↔ `die of` | **0.1309** | - |
+| `protect against` ↔ `protect from` | **0.1075** | - |
+| `consist of` ↔ `contain` | **0.0983** | - |
+| `affect` ↔ `attack` | 0.0285 | **0.0285** |
+
+**Small run:** only one true positive was found, `affect` ↔ `attack`, present in both the large and small experiment.
 
 ### 4.2 False Positives (System: Yes, Truth: No)
-Errors where the system claimed similarity, but the ground truth labeled them as negative.
+| Pair (Path A ↔ Path B) | Score (Large) | Score (Small) |
+| :--- | ---: | ---: |
+| `contract` (dobj) ↔ `die of` | 0.0655 | - |
+| `die of` ↔ `suffer from` | 0.0580 | - |
+| `contract` (dobj) ↔ `die from` | 0.0418 | - |
+| `avoid in` ↔ `use in` | 0.0331 | - |
+| `die of` ↔ `get` (dobj) | 0.0264 | - |
 
-| Pair (Path A $\leftrightarrow$ Path B) | Score (Large) | Score (Small) | Analysis |
-| :--- | :--- | :--- | :--- |
-| `contract` $\leftrightarrow$ `die of` | 0.0655 | 0.0 | **Contextual Similarity:** Both paths appear with the same medical nouns (e.g., "contract cancer", "die of cancer"). The system confuses *relatedness* (cause-effect) with *similarity*. |
-| `avoid in` $\leftrightarrow$ `use in` | 0.0331 | 0.0 | **Antonym Problem:** Antonyms often share identical contexts (e.g., "avoid in cooking" vs "use in cooking"). Statistical methods struggle to distinguish strong contrasts from synonyms without negative constraints. |
+**Small run:** no false positives were found above the optimal threshold (Precision = 1.0). 
 
-### 4.3 False Negatives (Missed Pairs)
-Pairs that are synonyms but received a score of 0.0 in both runs.
+### 4.3 True Negatives (System: No, Truth: No)
+All examples below have score **0.0**, meaning the system correctly rejected them (or never produced them) in both runs.
 
-| Pair (Path A $\leftrightarrow$ Path B) | Score (Large) | Score (Small) | Analysis |
-| :--- | :--- | :--- | :--- |
-| `produce` $\leftrightarrow$ `accompanied by` | 0.0 | 0.0 | **Feature Mismatch:** Even with 100 files, the specific slots filling these paths did not overlap sufficiently. |
-| `need for` $\leftrightarrow$ `require for` | 0.0 | 0.0 | **Coverage Limit:** Suggests that 100 files are still a small sample relative to the entire language complexity. |
+#### Large (100 files) — sample TNs
+| Pair (Path A ↔ Path B) | Score (Large) | Score (Small) |
+| :--- | ---: | ---: |
+| `be in` ↔ `occur in` | 0.0000 | 0.0000 |
+| `destroy` ↔ `produce` | 0.0000 | 0.0000 |
+| `have` ↔ `kill` | 0.0000 | 0.0000 |
+| `differ from` ↔ `include` | 0.0000 | 0.0000 |
+| `produce` ↔ `use in` | 0.0000 | 0.0000 |
 
-### 4.4 True Negatives (Correct Rejections)
-Pairs labeled as negative (non-synonymous) by the ground truth, which the system correctly assigned a low or zero score.
+#### Small (10 files) — sample TNs
+| Pair (Path A ↔ Path B) | Score (Small) | Score (Large) |
+| :--- | ---: | ---: |
+| `kill` ↔ `produced by` | 0.0000 | 0.0000 |
+| `confound with` ↔ `differ from` | 0.0000 | 0.0000 |
+| `derive from` ↔ `destroy` | 0.0000 | 0.0000 |
+| `differ from` ↔ `resemble` | 0.0000 | 0.0000 |
+| `die of` ↔ `get` | 0.0000 | 0.0264 |
 
-| Pair (Path A $\leftrightarrow$ Path B) | Score (Large) | Analysis |
-| :--- | :--- | :--- |
-| `destroy` $\leftrightarrow$ `produce` | 0.0000 | **Correct Rejection:** These are antonyms/opposites. The system correctly found no significant overlap or assigned a low score, distinguishing them effectively. |
-| `have` $\leftrightarrow$ `kill` | 0.0000 | **Semantic Distance:** These verbs are semantically distant and likely do not share enough specific slot fillers to trigger a match. |
-| `differ from` $\leftrightarrow$ `include` | 0.0000 | The system correctly identified that these relational paths do not share a distributional footprint. |
+### 4.4 False Negatives (System: No, Truth: Yes)
+These are gold positive pairs that the system missed (score 0.0). In both runs, they illustrate **coverage limitations** and **feature mismatch** (insufficient shared slot fillers for the pair).
+
+#### Large (100 files) — sample FNs
+| Pair (Path A ↔ Path B) | Score (Large) | Score (Small) |
+| :--- | ---: | ---: |
+| `give for` ↔ `require` (dobj) | 0.0000 | 0.0000 |
+| `relieve with` ↔ `take for` | 0.0000 | 0.0000 |
+| `accompany` (dobj) ↔ `cause` (dobj) | 0.0000 | 0.0000 |
+| `protect from` ↔ `reduce` (dobj) | 0.0000 | 0.0000 |
+| `associate with` ↔ `attend with` | 0.0000 | 0.0000 |
+
+#### Small (10 files) — sample FNs
+| Pair (Path A ↔ Path B) | Score (Small) | Score (Large) |
+| :--- | ---: | ---: |
+| `transmit` (dobj) ↔ `transmitted by` | 0.0000 | 0.0000 |
+| `control` (dobj) ↔ `reduce` (dobj) | 0.0000 | 0.0000 |
+| `have` (dobj) ↔ `use` (dobj) | 0.0000 | 0.0000 |
+| `give` (dobj) ↔ `produced by` | 0.0000 | 0.0000 |
+| `break` (dobj) ↔ `convert` (dobj) | 0.0000 | 0.0000 |
+
+**Common FN pattern:** even with 100 files, many test-set templates are still rare, and DIRT’s distributional overlap requirement (shared slot fillers across paths) often fails to trigger.
 
 ## 5. Conclusion
-The implementation of the DIRT algorithm was successful. The system achieved a high precision rate (~98%), validating the extraction and calculation logic. The comparative analysis between the 10-file and 100-file runs provides empirical evidence that unsupervised relation extraction is highly sensitive to corpus size. While the large dataset significantly improved coverage (finding 538 pairs vs 5), many valid pairs (False Negatives) were still missed, suggesting that running on the full corpus would yield further improvements without compromising precision.
+The implementation successfully reproduces the key DIRT behavior: **very high precision** with **recall strongly dependent on corpus size**.
 
+* The **Small (10 files)** run is dominated by data sparsity: only **5 scored pairs** were produced, yielding **Precision = 1.0** but **Recall ≈ 0.0008** and **F1 ≈ 0.0017** at the best threshold (0.028530).
+* The **Large (100 files)** run produces far more candidate similarities (**538 scored pairs**) and reaches **Recall ≈ 0.1214** while maintaining **Precision ≈ 0.9797**, for **F1 ≈ 0.2161** at threshold 0.004192.
+* The error analysis shows the classic DIRT failure mode: **contextual relatedness** (especially in medical domains) can look like synonymy, producing false positives such as `contract` ↔ `die of` and `die of` ↔ `suffer from`.
+
+Overall, scaling the corpus substantially improves coverage, but fully addressing the remaining false negatives and relatedness-based false positives would likely require either much larger corpora or additional constraints/features (e.g., directional entailment checks, selectional preference modeling, or explicit negative evidence).
