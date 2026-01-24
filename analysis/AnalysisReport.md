@@ -82,3 +82,4 @@ Pairs labeled as negative (non-synonymous) by the ground truth, which the system
 
 ## 5. Conclusion
 The implementation of the DIRT algorithm was successful. The system achieved a high precision rate (~98%), validating the extraction and calculation logic. The comparative analysis between the 10-file and 100-file runs provides empirical evidence that unsupervised relation extraction is highly sensitive to corpus size. While the large dataset significantly improved coverage (finding 538 pairs vs 5), many valid pairs (False Negatives) were still missed, suggesting that running on the full corpus would yield further improvements without compromising precision.
+
