@@ -55,7 +55,7 @@ This section lists **5 examples** for each category (TP/FP/TN/FN) and compares t
 | `consist of` ↔ `contain` | **0.0983** | - |
 | `affect` ↔ `attack` | 0.0285 | **0.0285** |
 
-**Small run:** only one true positive was found
+**Small run:** only one true positive was found, `affect` ↔ `attack`, present in both the large and small experiment.
 
 ### 4.2 False Positives (System: Yes, Truth: No)
 | Pair (Path A ↔ Path B) | Score (Large) | Score (Small) |
@@ -66,7 +66,7 @@ This section lists **5 examples** for each category (TP/FP/TN/FN) and compares t
 | `avoid in` ↔ `use in` | 0.0331 | - |
 | `die of` ↔ `get` (dobj) | 0.0264 | - |
 
-**Small run:** no false positives were found above the optimal threshold (Precision = 1.0), so the small-score entries in the FP table are marked as `-`.
+**Small run:** no false positives were found above the optimal threshold (Precision = 1.0). 
 
 ### 4.3 True Negatives (System: No, Truth: No)
 All examples below have score **0.0**, meaning the system correctly rejected them (or never produced them) in both runs.
