@@ -87,8 +87,6 @@ All examples below have score **0.0**, meaning the system correctly rejected the
 | `differ from` ↔ `resemble` | 0.0000 | 0.0000 |
 | `die of` ↔ `get` | 0.0000 | 0.0264 |
 
-> Note: `die of` ↔ `get` appears as a **TN in the small run** (score 0.0), but becomes a **FP in the large run** (score 0.0264), which is a concrete example of how adding more data increases coverage but can introduce context-based confusion.
-
 ### 4.4 False Negatives (System: No, Truth: Yes)
 These are gold positive pairs that the system missed (score 0.0). In both runs, they illustrate **coverage limitations** and **feature mismatch** (insufficient shared slot fillers for the pair).
 
