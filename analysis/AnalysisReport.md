@@ -72,43 +72,43 @@ This section lists **5 examples** for each category (TP/FP/TN/FN) and compares t
 All examples below have score **0.0**, meaning the system correctly rejected them (or never produced them) in both runs.
 
 #### Large (100 files) — sample TNs
-| Pair (Path A ↔ Path B) | Score (Large) | Score (Small) |
-| :--- | ---: | ---: |
-| `be in` ↔ `occur in` | 0.0000 | 0.0000 |
-| `destroy` ↔ `produce` | 0.0000 | 0.0000 |
-| `have` ↔ `kill` | 0.0000 | 0.0000 |
-| `differ from` ↔ `include` | 0.0000 | 0.0000 |
-| `produce` ↔ `use in` | 0.0000 | 0.0000 |
+| Pair (Path A ↔ Path B) | Score (Large) | 
+| :--- | ---: |
+| `be in` ↔ `occur in` | 0.0000 |
+| `destroy` ↔ `produce` | 0.0000 |
+| `have` ↔ `kill` | 0.0000 |
+| `differ from` ↔ `include` | 0.0000 |
+| `produce` ↔ `use in` | 0.0000 |
 
 #### Small (10 files) — sample TNs
-| Pair (Path A ↔ Path B) | Score (Small) | Score (Large) |
-| :--- | ---: | ---: |
-| `kill` ↔ `produced by` | 0.0000 | 0.0000 |
-| `confound with` ↔ `differ from` | 0.0000 | 0.0000 |
-| `derive from` ↔ `destroy` | 0.0000 | 0.0000 |
-| `differ from` ↔ `resemble` | 0.0000 | 0.0000 |
-| `die of` ↔ `get` | 0.0000 | 0.0264 |
+| Pair (Path A ↔ Path B) | Score (Small) |
+| :--- | ---: |
+| `kill` ↔ `produced by` | 0.0000 |
+| `confound with` ↔ `differ from` | 0.0000 |
+| `derive from` ↔ `destroy` | 0.0000 |
+| `differ from` ↔ `resemble` | 0.0000 |
+| `die of` ↔ `get` | 0.0000 |
 
 ### 4.4 False Negatives (System: No, Truth: Yes)
 These are gold positive pairs that the system missed (score 0.0). In both runs, they illustrate **coverage limitations** and **feature mismatch** (insufficient shared slot fillers for the pair).
 
 #### Large (100 files) — sample FNs
-| Pair (Path A ↔ Path B) | Score (Large) | Score (Small) |
-| :--- | ---: | ---: |
-| `give for` ↔ `require` (dobj) | 0.0000 | 0.0000 |
-| `relieve with` ↔ `take for` | 0.0000 | 0.0000 |
-| `accompany` (dobj) ↔ `cause` (dobj) | 0.0000 | 0.0000 |
-| `protect from` ↔ `reduce` (dobj) | 0.0000 | 0.0000 |
-| `associate with` ↔ `attend with` | 0.0000 | 0.0000 |
+| Pair (Path A ↔ Path B) | Score (Large) |
+| :--- | ---: |
+| `give for` ↔ `require` (dobj) | 0.0000 |
+| `relieve with` ↔ `take for` | 0.0000 |
+| `accompany` (dobj) ↔ `cause` (dobj) | 0.0000 |
+| `protect from` ↔ `reduce` (dobj) | 0.0000 |
+| `associate with` ↔ `attend with` | 0.0000 |
 
 #### Small (10 files) — sample FNs
-| Pair (Path A ↔ Path B) | Score (Small) | Score (Large) |
+| Pair (Path A ↔ Path B) | Score (Small) |
 | :--- | ---: | ---: |
-| `transmit` (dobj) ↔ `transmitted by` | 0.0000 | 0.0000 |
-| `control` (dobj) ↔ `reduce` (dobj) | 0.0000 | 0.0000 |
-| `have` (dobj) ↔ `use` (dobj) | 0.0000 | 0.0000 |
-| `give` (dobj) ↔ `produced by` | 0.0000 | 0.0000 |
-| `break` (dobj) ↔ `convert` (dobj) | 0.0000 | 0.0000 |
+| `transmit` (dobj) ↔ `transmitted by` | 0.0000 |
+| `control` (dobj) ↔ `reduce` (dobj) | 0.0000 |
+| `have` (dobj) ↔ `use` (dobj) | 0.0000 |
+| `give` (dobj) ↔ `produced by` | 0.0000 |
+| `break` (dobj) ↔ `convert` (dobj) | 0.0000 |
 
 **Common FN pattern:** even with 100 files, many test-set templates are still rare, and DIRT’s distributional overlap requirement (shared slot fillers across paths) often fails to trigger.
 
