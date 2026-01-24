@@ -30,8 +30,8 @@ The table below summarizes the performance metrics calculated at the optimal F1 
 ## 3. Precision-Recall Curve Analysis
 
 ### Small Dataset Graph
-* **Observation:** The graph for the small dataset appears empty or degenerated to a single point.
-* **Analysis:** This is expected behavior. In the small run, almost all candidate pairs have **score 0.0** (i.e., they are not assigned any non-zero similarity), so there are effectively **no non-zero points** to trace into a curve. With only one scored true positive (`affect` ↔ `attack`) and the rest at 0.0, changing the threshold cannot create additional points, so the plot collapses to a single visible point near $(x \approx 0, y=1.0)$.
+* **Observation:** The graph for the small dataset appears empty.
+* **Analysis:** In the small run, almost all candidate pairs have **score 0.0** (i.e., they are not assigned any non-zero similarity), so there are effectively **almost no non-zero points** to trace into a curve. 
 * <img width="800" height="600" alt="precision_recall_curve" src="https://github.com/user-attachments/assets/8138a9ab-79be-4174-a695-2eb8c5720e72" />
 
 
