@@ -97,18 +97,18 @@ These are gold positive pairs that the system missed (score 0.0). In both runs, 
 | :--- | ---: |
 | `give for` ↔ `require` (dobj) | 0.0000 |
 | `relieve with` ↔ `take for` | 0.0000 |
-| `accompany` (dobj) ↔ `cause` (dobj) | 0.0000 |
+| `accompany` ↔ `cause` (dobj) | 0.0000 |
 | `protect from` ↔ `reduce` (dobj) | 0.0000 |
 | `associate with` ↔ `attend with` | 0.0000 |
 
 #### Small (10 files) — sample FNs
 | Pair (Path A ↔ Path B) | Score (Small) |
-| :--- | ---: | ---: |
-| `transmit` (dobj) ↔ `transmitted by` | 0.0000 |
-| `control` (dobj) ↔ `reduce` (dobj) | 0.0000 |
-| `have` (dobj) ↔ `use` (dobj) | 0.0000 |
-| `give` (dobj) ↔ `produced by` | 0.0000 |
-| `break` (dobj) ↔ `convert` (dobj) | 0.0000 |
+| :--- | ---: |
+| `transmit` ↔ `transmitted by` | 0.0000 |
+| `control` ↔ `reduce` (dobj) | 0.0000 |
+| `have` ↔ `use` (dobj) | 0.0000 |
+| `give` ↔ `produced by` | 0.0000 |
+| `break` ↔ `convert`| 0.0000 |
 
 **Common FN pattern:** even with 100 files, many test-set templates are still rare, and DIRT’s distributional overlap requirement (shared slot fillers across paths) often fails to trigger.
 
