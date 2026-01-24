@@ -49,11 +49,12 @@ This section lists **5 examples** for each category (TP/FP/TN/FN) and compares t
 ### 4.1 True Positives (System: Yes, Truth: Yes)
 | Pair (Path A ↔ Path B) | Score (Large) | Score (Small) |
 | :--- | ---: | ---: |
-| `lead to` ↔ `result in` | **0.1536** | 0.0000 |
-| `die from` ↔ `die of` | **0.1309** | 0.0000 |
-| `protect against` ↔ `protect from` | **0.1075** | 0.0000 |
-| `consist of` ↔ `contain` | **0.0983** | 0.0000 |
+| `lead to` ↔ `result in` | **0.1536** | - |
+| `die from` ↔ `die of` | **0.1309** | - |
+| `protect against` ↔ `protect from` | **0.1075** | - |
+| `consist of` ↔ `contain` | **0.0983** | - |
 | `affect` ↔ `attack` | 0.0285 | **0.0285** |
+**Small run:** only one true positive was found
 
 ### 4.2 False Positives (System: Yes, Truth: No)
 | Pair (Path A ↔ Path B) | Score (Large) | Score (Small) |
@@ -64,7 +65,7 @@ This section lists **5 examples** for each category (TP/FP/TN/FN) and compares t
 | `avoid in` ↔ `use in` | 0.0331 | - |
 | `die of` ↔ `get` (dobj) | 0.0264 | - |
 
-**Small run:** no false positives were found above the optimal threshold (Precision = 1.0), so the small-score entries in the FP table are marked as `-` (not enough examples).
+**Small run:** no false positives were found above the optimal threshold (Precision = 1.0), so the small-score entries in the FP table are marked as `-`.
 
 ### 4.3 True Negatives (System: No, Truth: No)
 All examples below have score **0.0**, meaning the system correctly rejected them (or never produced them) in both runs.
