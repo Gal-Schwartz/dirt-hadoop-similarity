@@ -54,6 +54,7 @@ This section lists **5 examples** for each category (TP/FP/TN/FN) and compares t
 | `protect against` ↔ `protect from` | **0.1075** | - |
 | `consist of` ↔ `contain` | **0.0983** | - |
 | `affect` ↔ `attack` | 0.0285 | **0.0285** |
+
 **Small run:** only one true positive was found
 
 ### 4.2 False Positives (System: Yes, Truth: No)
