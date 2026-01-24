@@ -32,10 +32,14 @@ The table below summarizes the performance metrics calculated at the optimal F1 
 ### Small Dataset Graph
 * **Observation:** The graph for the small dataset appears empty or degenerated to a single point.
 * **Analysis:** This is expected behavior. Since the system only identified **one** true positive pair (`affect` $\leftrightarrow$ `attack`) out of 1,194 possible pairs, the Recall axis effectively stays at 0. The curve consists of a single point at $(x \approx 0, y=1.0)$. This visualizes the extreme lack of coverage caused by the small corpus size.
+* <img width="800" height="600" alt="precision_recall_curve" src="https://github.com/user-attachments/assets/8138a9ab-79be-4174-a695-2eb8c5720e72" />
+
 
 ### Large Dataset Graph
 * **Observation:** The graph shows a curve that starts at high precision (1.0) and descends in "steps."
 * **Analysis:** The curve maintains near-perfect precision for the initial segment, indicating that the highest-scored pairs are exclusively correct. The "steps" or drops in the curve represent specific threshold points where false positives (e.g., antonyms or contextually related but non-synonymous words) are introduced into the result set. The fact that the curve extends to ~0.12 Recall (unlike the small dataset) confirms the improved coverage provided by the larger corpus.
+  <img width="800" height="600" alt="precision_recall_curve (1)" src="https://github.com/user-attachments/assets/87410109-9e2b-4812-90bc-c175f1f39d42" />
+
 
 ## 4. Error Analysis
 This section analyzes specific examples and **compares their similarity scores** between the Small (10 files) and Large (100 files) datasets.
