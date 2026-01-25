@@ -17,7 +17,7 @@ The table below summarizes the performance metrics calculated at the optimal F1 
 
 | Metric | Small Dataset (10 Files) | Large Dataset (100 Files) |
 | :--- | :--- | :--- |
-| **Pairs Found** | 5 | 538 |
+| **Pairs Found** | 17 | 538 |
 | **Optimal Threshold** | 0.025647 | 0.004192 |
 | **Precision** | **0.7692 (77%)** | **0.9797 (98%)** |
 | **Recall** | 0.0084 (0.8%) | 0.1214 (12.14%) |
@@ -38,15 +38,13 @@ The table below summarizes the performance metrics calculated at the optimal F1 
 
 ### Large Dataset Graph
 * **Observation:** The graph shows a curve that starts at high precision (1.0) and descends in "steps."
-* **Analysis:** The curve maintains near-perfect precision for the initial segment, indicating that the highest-scored pairs are exclusively correct. The "steps" or drops in the curve represent specific threshold points where false positives (e.g., antonyms or contextually related but non-synonymous words) are introduced into the result set. The fact that the curve extends to ~0.12 Recall (unlike the small dataset) confirms the improved coverage provided by the larger corpus.
+* **Analysis:** The curve maintains near-perfect precision for the initial segment, indicating that the highest-scored pairs are exclusively correct. The "steps" or drops in the curve represent specific threshold points where false positives are introduced into the result set. 
   <img width="800" height="600" alt="precision_recall_curve (1)" src="https://github.com/user-attachments/assets/2c590502-2d73-4db6-b381-fe4982d3feb7" />
 
 
 
 ## 4. Error Analysis
 This section lists **5 examples** for each category (TP/FP/TN/FN) and compares their similarity scores between the Small (10 files) and Large (100 files) runs.
-
-**Note:** If a pair does not appear in the system output, it is treated as having **score 0.0** (i.e., below the reporting threshold).
 
 ### 4.1 True Positives (System: Yes, Truth: Yes)
 #### Large (100 files) 
@@ -86,7 +84,7 @@ This section lists **5 examples** for each category (TP/FP/TN/FN) and compares t
 | `develop` ↔ `die of` | **0.0290** |
 
 ### 4.3 True Negatives (System: No, Truth: No)
-All examples below have score **0.0**, meaning the system correctly rejected them (or never produced them) in both runs.
+All examples below have score **0.0**, meaning the system correctly rejected them in both runs.
 
 #### Large (100 files) — sample TNs
 | Pair (Path A ↔ Path B) | Score (Large) | 
@@ -107,7 +105,6 @@ All examples below have score **0.0**, meaning the system correctly rejected the
 | `die of` ↔ `get` | 0.0000 |
 
 ### 4.4 False Negatives (System: No, Truth: Yes)
-These are gold positive pairs that the system missed (score 0.0). In both runs, they illustrate **coverage limitations** and **feature mismatch** (insufficient shared slot fillers for the pair).
 
 #### Large (100 files) — sample FNs
 | Pair (Path A ↔ Path B) | Score (Large) |
