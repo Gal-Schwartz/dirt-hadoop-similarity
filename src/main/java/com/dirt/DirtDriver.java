@@ -104,23 +104,269 @@ public class DirtDriver extends Configured implements Tool {
     }
 
     public static class PorterStemmer {
+        private char[] b;
+        private int i, i_end, j, k;
+        private static final int INC = 50;
+
+        public PorterStemmer() {
+            b = new char[INC];
+            i = 0;
+            i_end = 0;
+        }
+
         public String stem(String s) {
-            if (s == null)
-                return "";
-            s = s.toLowerCase();
-            if (s.length() <= 2)
-                return s;
-            if (s.endsWith("sses"))
-                return s.substring(0, s.length() - 2);
-            if (s.endsWith("ies"))
-                return s.substring(0, s.length() - 2) + "i";
-            if (s.endsWith("s") && !s.endsWith("ss"))
-                return s.substring(0, s.length() - 1);
-            if (s.endsWith("ing"))
-                return s.substring(0, s.length() - 3);
-            if (s.endsWith("ed"))
-                return s.substring(0, s.length() - 2);
-            return s;
+            if (s == null || s.length() == 0) return "";
+            
+            // Reset buffer
+            i = 0;
+            i_end = 0;
+            
+            // Add string to buffer
+            char[] chars = s.toCharArray();
+            for (char c : chars) {
+                add(c);
+            }
+            
+            stem();
+            return toString();
+        }
+
+        public void add(char ch) {
+            if (i == b.length) {
+                char[] new_b = new char[i + INC];
+                for (int c = 0; c < i; c++) new_b[c] = b[c];
+                b = new_b;
+            }
+            b[i++] = ch;
+        }
+
+        public String toString() {
+            return new String(b, 0, i_end);
+        }
+
+        private final boolean cons(int i) {
+            switch (b[i]) {
+                case 'a': case 'e': case 'i': case 'o': case 'u': return false;
+                case 'y': return (i == 0) ? true : !cons(i - 1);
+                default: return true;
+            }
+        }
+
+        private final int m() {
+            int n = 0;
+            int i = 0;
+            while (true) {
+                if (i > j) return n;
+                if (!cons(i)) break;
+                i++;
+            }
+            i++;
+            while (true) {
+                while (true) {
+                    if (i > j) return n;
+                    if (cons(i)) break;
+                    i++;
+                }
+                i++;
+                n++;
+                while (true) {
+                    if (i > j) return n;
+                    if (!cons(i)) break;
+                    i++;
+                }
+                i++;
+            }
+        }
+
+        private final boolean vowelinstem() {
+            int i;
+            for (i = 0; i <= j; i++)
+                if (!cons(i)) return true;
+            return false;
+        }
+
+        private final boolean doublec(int j) {
+            if (j < 1) return false;
+            if (b[j] != b[j - 1]) return false;
+            return cons(j);
+        }
+
+        private final boolean cvc(int i) {
+            if (i < 2 || !cons(i) || cons(i - 1) || !cons(i - 2)) return false;
+            int ch = b[i];
+            if (ch == 'w' || ch == 'x' || ch == 'y') return false;
+            return true;
+        }
+
+        private final boolean ends(String s) {
+            int l = s.length();
+            int o = k - l + 1;
+            if (o < 0) return false;
+            for (int i = 0; i < l; i++)
+                if (b[o + i] != s.charAt(i)) return false;
+            j = k - l;
+            return true;
+        }
+
+        private final void setto(String s) {
+            int l = s.length();
+            int o = j + 1;
+            for (int i = 0; i < l; i++)
+                b[o + i] = s.charAt(i);
+            k = j + l;
+        }
+
+        private final void r(String s) {
+            if (m() > 0) setto(s);
+        }
+
+        private final void step1() {
+            if (b[k] == 's') {
+                if (ends("sses")) k -= 2;
+                else if (ends("ies")) setto("i");
+                else if (b[k - 1] != 's') k--;
+            }
+            if (ends("eed")) {
+                if (m() > 0) k--;
+            } else if ((ends("ed") || ends("ing")) && vowelinstem()) {
+                k = j;
+                if (ends("at")) setto("ate");
+                else if (ends("bl")) setto("ble");
+                else if (ends("iz")) setto("ize");
+                else if (doublec(k)) {
+                    k--;
+                    int ch = b[k];
+                    if (ch == 'l' || ch == 's' || ch == 'z') k++;
+                } else if (m() == 1 && cvc(k)) setto("e");
+            }
+        }
+
+        private final void step2() {
+            if (ends("y") && vowelinstem()) b[k] = 'i';
+        }
+
+        private final void step3() {
+            if (k == 0) return;
+            switch (b[k - 1]) {
+                case 'a':
+                    if (ends("ational")) { r("ate"); break; }
+                    if (ends("tional")) { r("tion"); break; }
+                    break;
+                case 'c':
+                    if (ends("enci")) { r("ence"); break; }
+                    if (ends("anci")) { r("ance"); break; }
+                    break;
+                case 'e':
+                    if (ends("izer")) { r("ize"); break; }
+                    break;
+                case 'l':
+                    if (ends("bli")) { r("ble"); break; }
+                    if (ends("alli")) { r("al"); break; }
+                    if (ends("entli")) { r("ent"); break; }
+                    if (ends("eli")) { r("e"); break; }
+                    if (ends("ousli")) { r("ous"); break; }
+                    break;
+                case 'o':
+                    if (ends("ization")) { r("ize"); break; }
+                    if (ends("ation")) { r("ate"); break; }
+                    if (ends("ator")) { r("ate"); break; }
+                    break;
+                case 's':
+                    if (ends("alism")) { r("al"); break; }
+                    if (ends("iveness")) { r("ive"); break; }
+                    if (ends("fulness")) { r("ful"); break; }
+                    if (ends("ousness")) { r("ous"); break; }
+                    break;
+                case 't':
+                    if (ends("aliti")) { r("al"); break; }
+                    if (ends("iviti")) { r("ive"); break; }
+                    if (ends("biliti")) { r("ble"); break; }
+                    break;
+                case 'g':
+                    if (ends("logi")) { r("log"); break; }
+            }
+        }
+
+        private final void step4() {
+            switch (b[k]) {
+                case 'e':
+                    if (ends("icate")) { r("ic"); break; }
+                    if (ends("ative")) { r(""); break; }
+                    if (ends("alize")) { r("al"); break; }
+                    break;
+                case 'i':
+                    if (ends("iciti")) { r("ic"); break; }
+                    break;
+                case 'l':
+                    if (ends("ical")) { r("ic"); break; }
+                    if (ends("ful")) { r(""); break; }
+                    break;
+                case 's':
+                    if (ends("ness")) { r(""); break; }
+                    break;
+            }
+        }
+
+        private final void step5() {
+            if (k == 0) return;
+            switch (b[k - 1]) {
+                case 'a':
+                    if (ends("al")) break; return;
+                case 'c':
+                    if (ends("ance")) break;
+                    if (ends("ence")) break; return;
+                case 'e':
+                    if (ends("er")) break; return;
+                case 'i':
+                    if (ends("ic")) break; return;
+                case 'l':
+                    if (ends("able")) break;
+                    if (ends("ible")) break; return;
+                case 'n':
+                    if (ends("ant")) break;
+                    if (ends("ement")) break;
+                    if (ends("ment")) break;
+                    if (ends("ent")) break; return;
+                case 'o':
+                    if (ends("ion") && j >= 0 && (b[j] == 's' || b[j] == 't')) break;
+                    if (ends("ou")) break; return;
+                case 's':
+                    if (ends("ism")) break; return;
+                case 't':
+                    if (ends("ate")) break;
+                    if (ends("iti")) break; return;
+                case 'u':
+                    if (ends("ous")) break; return;
+                case 'v':
+                    if (ends("ive")) break; return;
+                case 'z':
+                    if (ends("ize")) break; return;
+                default: return;
+            }
+            if (m() > 1) k = j;
+        }
+
+        private final void step6() {
+            j = k;
+            if (b[k] == 'e') {
+                int a = m();
+                if (a > 1 || a == 1 && !cvc(k - 1)) k--;
+            }
+            if (b[k] == 'l' && doublec(k) && m() > 1) k--;
+        }
+
+        public void stem() {
+            k = i - 1;
+            if (k > 1) {
+                step1();
+                step2();
+                step3();
+                step4();
+                step5();
+                step6();
+            }
+            i_end = k + 1;
+            i = 0;
         }
     }
 
@@ -369,9 +615,15 @@ public class DirtDriver extends Configured implements Tool {
                                 }
                             }
                         } catch (Exception e) {
+                            System.err.println("ERROR loading word margins from " + uri + ": " + e.getMessage());
+                            throw new IOException("Failed to load critical cache file: " + uri, e);
                         }
                     }
                 }
+                if (wordMargins.isEmpty()) {
+                    throw new IOException("No word margins loaded! Check cache files.");
+                }
+                System.err.println("Loaded " + wordMargins.size() + " word margin entries");
             }
 
             @Override
@@ -396,31 +648,41 @@ public class DirtDriver extends Configured implements Tool {
             @Override
             protected void setup(Context context) {
                 N = context.getConfiguration().getLong("GLOBAL_N", 1);
+                System.err.println("Using GLOBAL_N = " + N);
             }
 
             @Override
             protected void reduce(PathSlotKey key, Iterable<Text> values, Context context)
                     throws IOException, InterruptedException {
-                Iterator<Text> it = values.iterator();
-                if (!it.hasNext())
-                    return;
-
-                String firstVal = it.next().toString();
+                
                 long psCount = 0;
-
-                if (firstVal.contains("\t")) {
+                List<String> tripleRecords = new ArrayList<>();
+                
+                for (Text val : values) {
+                    String valStr = val.toString();
+                    
+                    // Check if this is a margin (no tabs) or triple (has tabs)
+                    if (valStr.contains("\t")) {
+                        // This is a triple record
+                        tripleRecords.add(valStr);
+                    } else {
+                        // This is a margin record
+                        try {
+                            psCount = Long.parseLong(valStr);
+                        } catch (NumberFormatException e) {
+                            System.err.println("ERROR parsing margin count: " + valStr);
+                        }
+                    }
+                }
+                
+                if (psCount == 0) {
+                    System.err.println("WARNING: No margin found for path=" + key.path + " slot=" + key.slot);
                     return;
                 }
-
-                try {
-                    psCount = Long.parseLong(firstVal);
-                } catch (NumberFormatException e) {
-                    return;
-                }
-                while (it.hasNext()) {
-                    String valStr = it.next().toString();
-                    String[] data = valStr.split("\t"); //format -  word, tripCount, swCount
-
+                
+                for (String tripleData : tripleRecords) {
+                    String[] data = tripleData.split("\t");
+                    
                     if (data.length < 3)
                         continue;
 
@@ -439,6 +701,7 @@ public class DirtDriver extends Configured implements Tool {
                             }
                         }
                     } catch (Exception e) {
+                        System.err.println("ERROR calculating MI for triple: " + tripleData + " - " + e.getMessage());
                     }
                 }
             }
@@ -474,44 +737,96 @@ public class DirtDriver extends Configured implements Tool {
         public static class Map extends Mapper<LongWritable, Text, Text, Text> {
             private java.util.Map<String, List<String>> neighbors = new HashMap<>();
             private final PorterStemmer stemmer = new PorterStemmer();
+            private static final Set<String> AUX_WORDS = new HashSet<>(Arrays.asList(
+                "be", "am", "is", "are", "was", "were", "been", "being",
+                "do", "does", "did", "have", "has", "had", "will", "would",
+                "shall", "should", "can", "could", "may", "might", "must"));
 
             @Override
             protected void setup(Context context) throws IOException {
                 URI[] files = context.getCacheFiles();
                 if (files != null) {
+                    int filesLoaded = 0;
                     for (URI uri : files) {
                         try {
                             loadTestSet(new File(new Path(uri).getName()));
+                            filesLoaded++;
                         } catch (Exception e) {
+                            System.err.println("ERROR loading test set from " + uri + ": " + e.getMessage());
+                            throw new IOException("Failed to load critical test set file: " + uri, e);
                         }
                     }
+                    System.err.println("Loaded " + filesLoaded + " test set files");
                 }
+                if (neighbors.isEmpty()) {
+                    throw new IOException("No test set pairs loaded! Check cache files.");
+                }
+                System.err.println("Total neighbor pairs: " + neighbors.size());
             }
 
+            
             private String convertPhraseToPath(String phrase) {
-                String inner = phrase.replaceAll("^X\\s+", "").replaceAll("\\s+Y$", "");
-                String[] words = inner.split(" ");
+                String inner = phrase.replaceAll("^X\\s+", "")
+                                    .replaceAll("\\s+Y$", "")
+                                    .trim();
+                if (inner.isEmpty()) return null;
 
-                if (words.length == 1) {
-                    String vStem = stemmer.stem(words[0]); 
+                String[] w = inner.split("\\s+");
+
+                // Allow optional leading AUX
+                int start = 0;
+                if (w.length >= 2 && AUX_WORDS.contains(w[0].toLowerCase())) {
+                    start = 1;
+                }
+
+                int len = w.length - start;
+                if (len <= 0) return null;
+
+                if (len >= 2 && w[w.length - 1].equalsIgnoreCase("by")) {
+                    String verb = w[w.length - 2];
+                    String vStem = stemmer.stem(verb);
+                    return "N:<nsubjpass:V:" + vStem + ":>prep:P:by:>pobj:N";
+                }
+
+                // Active: "X VERB Y"
+                if (len == 1) {
+                    String vStem = stemmer.stem(w[start]);
                     return "N:<nsubj:V:" + vStem + ":>dobj:N";
                 }
 
-                if (words.length == 2) {
-                    String vStem = stemmer.stem(words[0]);
-                    String prep = words[1];
+                // Active with prep: "X VERB PREP Y"
+                if (len == 2) {
+                    String vStem = stemmer.stem(w[start]);
+                    String prep = w[start + 1].toLowerCase();
                     return "N:<nsubj:V:" + vStem + ":>prep:P:" + prep + ":>pobj:N";
                 }
-
-                if (words.length == 2 && words[1].equals("by")) {
-                    String vStem = stemmer.stem(words[0]);
-                    return "N:<nsubjpass:V:" + vStem + ":>agent:P:by:>pobj:N";
+                if (len == 3) {
+                    // Check if middle word is common particle
+                    String middle = w[start + 1].toLowerCase();
+                    if (isParticle(middle)) {
+                        // Treat as "verb-particle prep" -> collapse to "verb prep"
+                        String vStem = stemmer.stem(w[start] + middle); // composite stem
+                        String prep = w[start + 2].toLowerCase();
+                        return "N:<nsubj:V:" + vStem + ":>prep:P:" + prep + ":>pobj:N";
+                    }
                 }
 
-                return null; 
+                // Warn about unhandled patterns
+                System.err.println("WARNING: Cannot convert phrase (len=" + len + "): " + phrase);
+                return null;
+            }
+            
+            private boolean isParticle(String word) {
+                // Common verb particles
+                return word.equals("up") || word.equals("down") || word.equals("out") || 
+                       word.equals("in") || word.equals("off") || word.equals("on") ||
+                       word.equals("over") || word.equals("through");
             }
 
+
+
             private void loadTestSet(File file) throws IOException {
+                int pairCount = 0;
                 try (BufferedReader br = new BufferedReader(new FileReader(file))) {
                     String line;
                     while ((line = br.readLine()) != null) {
@@ -523,10 +838,15 @@ public class DirtDriver extends Configured implements Tool {
                             if (path1 != null && path2 != null) {
                                 neighbors.computeIfAbsent(path1, k -> new ArrayList<>()).add(path2);
                                 neighbors.computeIfAbsent(path2, k -> new ArrayList<>()).add(path1);
+                                pairCount++;
+                            } else {
+                                if (path1 == null) System.err.println("  Could not convert: " + p[0]);
+                                if (path2 == null) System.err.println("  Could not convert: " + p[1]);
                             }
                         }
                     }
                 }
+                System.err.println("Loaded " + pairCount + " pairs from " + file.getName());
             }
 
             @Override
@@ -581,7 +901,6 @@ public class DirtDriver extends Configured implements Tool {
                             numX += sum;
                         else if (feat.startsWith("Y:"))
                             numY += sum;
-                        // ---------------------------------------------------------
                     }
                 }
                 context.write(key, new Text(numX + "\t" + numY));
@@ -608,6 +927,7 @@ public class DirtDriver extends Configured implements Tool {
             protected void setup(Context context) throws IOException {
                 URI[] files = context.getCacheFiles();
                 if (files != null) {
+                    int filesLoaded = 0;
                     for (URI uri : files) {
                         try (BufferedReader br = new BufferedReader(
                                 new FileReader(new File(new Path(uri).getName())))) {
@@ -618,10 +938,18 @@ public class DirtDriver extends Configured implements Tool {
                                     sumMIs.put(p[0] + "\t" + p[1], Double.parseDouble(p[2]));
                                 }
                             }
+                            filesLoaded++;
                         } catch (Exception e) {
+                            System.err.println("ERROR loading sumMI from " + uri + ": " + e.getMessage());
+                            throw new IOException("Failed to load critical sumMI file: " + uri, e);
                         }
                     }
+                    System.err.println("Loaded sumMI data from " + filesLoaded + " files");
                 }
+                if (sumMIs.isEmpty()) {
+                    throw new IOException("No sumMI data loaded! Check cache files.");
+                }
+                System.err.println("Total sumMI entries: " + sumMIs.size());
             }
 
             @Override
@@ -670,6 +998,7 @@ public class DirtDriver extends Configured implements Tool {
         String out4 = outputBase + "/final";
 
         // JOB 1
+        System.err.println("Starting Job 1: Extraction");
         Job j1 = Job.getInstance(conf, "DIRT_1_Extraction");
         j1.setJarByClass(DirtDriver.class);
         j1.setMapperClass(Job1_Extraction.Map.class);
@@ -686,10 +1015,18 @@ public class DirtDriver extends Configured implements Tool {
         if (!j1.waitForCompletion(true))
             return 1;
 
-        long globalN = readTotalN(conf, new Path(out1), "global");
+        long globalN;
+        try {
+            globalN = readTotalN(conf, new Path(out1), "global");
+            System.err.println("Read GLOBAL_N = " + globalN);
+        } catch (Exception e) {
+            System.err.println("ERROR reading global N: " + e.getMessage());
+            return 1;
+        }
         conf.setLong("GLOBAL_N", globalN);
 
         // JOB 2
+        System.err.println("Starting Job 2: MI Calculation");
         Job j2 = Job.getInstance(conf, "DIRT_2_MI");
         j2.setJarByClass(DirtDriver.class);
         addCacheFilesWithPrefix(j2, conf, new Path(out1), "wordmargins");
@@ -708,6 +1045,7 @@ public class DirtDriver extends Configured implements Tool {
             return 1;
 
         // JOB 2.5
+        System.err.println("Starting Job 2.5: Sum MI");
         Job j25 = Job.getInstance(conf, "DIRT_2.5_SumMI");
         j25.setJarByClass(DirtDriver.class);
         j25.setMapperClass(Job25_SumMI.Map.class);
@@ -721,6 +1059,7 @@ public class DirtDriver extends Configured implements Tool {
             return 1;
 
         // JOB 3
+        System.err.println("Starting Job 3: Overlap Calculation");
         Job j3 = Job.getInstance(conf, "DIRT_3_Overlap");
         j3.setJarByClass(DirtDriver.class);
         j3.addCacheFile(new URI(testSetBase + "/positive-preds.txt"));
@@ -735,6 +1074,7 @@ public class DirtDriver extends Configured implements Tool {
             return 1;
 
         // JOB 4
+        System.err.println("Starting Job 4: Final Similarity");
         Job j4 = Job.getInstance(conf, "DIRT_4_FinalSim");
         j4.setJarByClass(DirtDriver.class);
         addAllPartsToCache(j4, conf, new Path(out25));
@@ -746,7 +1086,9 @@ public class DirtDriver extends Configured implements Tool {
         FileInputFormat.addInputPath(j4, new Path(out3));
         FileOutputFormat.setOutputPath(j4, new Path(out4));
 
-        return j4.waitForCompletion(true) ? 0 : 1;
+        boolean success = j4.waitForCompletion(true);
+        System.err.println("Job completed: " + (success ? "SUCCESS" : "FAILURE"));
+        return success ? 0 : 1;
     }
 
     // --- HELPER METHODS ---
@@ -754,46 +1096,66 @@ public class DirtDriver extends Configured implements Tool {
     private void addCacheFilesWithPrefix(Job job, Configuration conf, Path parentDir, String prefix)
             throws IOException {
         FileSystem fs = parentDir.getFileSystem(conf);
+        int count = 0;
         if (fs.exists(parentDir)) {
             FileStatus[] stats = fs.listStatus(parentDir);
             for (FileStatus stat : stats) {
                 if (stat.getPath().getName().startsWith(prefix)) {
                     job.addCacheFile(stat.getPath().toUri());
+                    count++;
                 }
             }
         }
+        System.err.println("Added " + count + " cache files with prefix: " + prefix);
     }
 
     private void addAllPartsToCache(Job job, Configuration conf, Path dir) throws IOException {
         FileSystem fs = dir.getFileSystem(conf);
+        int count = 0;
         if (fs.exists(dir)) {
             FileStatus[] stats = fs.listStatus(dir);
             for (FileStatus st : stats) {
                 if (st.getPath().getName().startsWith("part-")) {
                     job.addCacheFile(st.getPath().toUri());
+                    count++;
                 }
             }
         }
+        System.err.println("Added " + count + " part files to cache from: " + dir);
     }
 
     private long readTotalN(Configuration conf, Path parentDir, String prefix) throws IOException {
         long sum = 0;
         FileSystem fs = parentDir.getFileSystem(conf);
+        int fileCount = 0;
+        
         if (fs.exists(parentDir)) {
             FileStatus[] stats = fs.listStatus(parentDir);
             for (FileStatus stat : stats) {
                 if (stat.getPath().getName().startsWith(prefix)) {
+                    fileCount++;
                     try (BufferedReader br = new BufferedReader(new InputStreamReader(fs.open(stat.getPath())))) {
                         String line;
                         while ((line = br.readLine()) != null) {
                             String[] partsStr = line.split("\t");
-                            if (partsStr.length >= 2)
-                                sum += Long.parseLong(partsStr[1]);
+                            if (partsStr.length >= 2) {
+                                try {
+                                    sum += Long.parseLong(partsStr[1]);
+                                } catch (NumberFormatException e) {
+                                    System.err.println("WARNING: Cannot parse count in line: " + line);
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+        
+        if (fileCount == 0) {
+            throw new IOException("No files found with prefix: " + prefix + " in " + parentDir);
+        }
+        
+        System.err.println("Read total N from " + fileCount + " files: " + sum);
         return sum == 0 ? 1 : sum;
     }
 }
