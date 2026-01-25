@@ -18,27 +18,28 @@ The table below summarizes the performance metrics calculated at the optimal F1 
 | Metric | Small Dataset (10 Files) | Large Dataset (100 Files) |
 | :--- | :--- | :--- |
 | **Pairs Found** | 5 | 538 |
-| **Optimal Threshold** | 0.028530 | 0.004192 |
-| **Precision** | **1.0000 (100%)** | **0.9797 (98%)** |
-| **Recall** | 0.0008 (0.08%) | 0.1214 (12.14%) |
-| **F1 Score** | 0.0017 | **0.2161** |
+| **Optimal Threshold** | 0.025647 | 0.004192 |
+| **Precision** | **0.7692 (77%)** | **0.9797 (98%)** |
+| **Recall** | 0.0084 (0.8%) | 0.1214 (12.14%) |
+| **F1 Score** | **0.0166** | **0.2161** |
 
 ### Analysis of Results
 * **Precision:** The system demonstrates exceptionally high precision in both configurations. Even with limited data, the algorithm does not "hallucinate" false relationships; when it finds a match, it is almost statistically certain to be correct. The 98% precision on the large dataset proves that the Lin Similarity measure and Mutual Information logic are implemented correctly and effectively filter noise.
-* **Recall & Data Sparsity:** The dramatic difference in Recall (0.08% vs 12.1%) highlights the **Data Sparsity** problem inherent in distributional similarity algorithms. With only 10 files, the feature vectors (words appearing in slots X and Y) rarely overlap with the Test Set paths, resulting in near-zero recall. Increasing the data by 10x (to 100 files) increased the number of discovered pairs by over **100x** (from 5 to 538), demonstrating that the algorithm's performance scales non-linearly with data volume.
+* **Recall & Data Sparsity:** The dramatic difference in Recall (0.08% vs 12.1%) highlights the **Data Sparsity** problem inherent in distributional similarity algorithms. With only 10 files, the feature vectors (words appearing in slots X and Y) rarely overlap with the Test Set paths, resulting in near-zero recall. Increasing the data by 10x (to 100 files) increased the number of discovered pairs by over **30x** (from 17 to 538), demonstrating that the algorithm's performance scales non-linearly with data volume.
 
 ## 3. Precision-Recall Curve Analysis
 
 ### Small Dataset Graph
-* **Observation:** The graph for the small dataset appears empty.
-* **Analysis:** In the small run, almost all candidate pairs have **score 0.0** (i.e., they are not assigned any non-zero similarity), so there are effectively **almost no non-zero points** to trace into a curve. 
+* **Observation:** This PR curve for the small experiment shows it achieves moderate–high precision on the few pairs it scores highly, but it retrieves only a tiny fraction of the true positives.
+* **Analysis:** in the small run, DIRT is producing only a small number of non-zero similarity pairs, and the ones it does produce are often correct, but coverage is weak.
 * <img width="800" height="600" alt="precision_recall_curve" src="https://github.com/user-attachments/assets/8138a9ab-79be-4174-a695-2eb8c5720e72" />
 
 
 ### Large Dataset Graph
 * **Observation:** The graph shows a curve that starts at high precision (1.0) and descends in "steps."
 * **Analysis:** The curve maintains near-perfect precision for the initial segment, indicating that the highest-scored pairs are exclusively correct. The "steps" or drops in the curve represent specific threshold points where false positives (e.g., antonyms or contextually related but non-synonymous words) are introduced into the result set. The fact that the curve extends to ~0.12 Recall (unlike the small dataset) confirms the improved coverage provided by the larger corpus.
-  <img width="800" height="600" alt="precision_recall_curve (1)" src="https://github.com/user-attachments/assets/87410109-9e2b-4812-90bc-c175f1f39d42" />
+  <img width="800" height="600" alt="precision_recall_curve (2)" src="https://github.com/user-attachments/assets/f1a343a8-ca4e-43bd-9650-5734ebf3c752" />
+
 
 
 ## 4. Error Analysis
@@ -47,26 +48,41 @@ This section lists **5 examples** for each category (TP/FP/TN/FN) and compares t
 **Note:** If a pair does not appear in the system output, it is treated as having **score 0.0** (i.e., below the reporting threshold).
 
 ### 4.1 True Positives (System: Yes, Truth: Yes)
-| Pair (Path A ↔ Path B) | Score (Large) | Score (Small) |
-| :--- | ---: | ---: |
-| `lead to` ↔ `result in` | **0.1536** | - |
-| `die from` ↔ `die of` | **0.1309** | - |
-| `protect against` ↔ `protect from` | **0.1075** | - |
-| `consist of` ↔ `contain` | **0.0983** | - |
-| `affect` ↔ `attack` | 0.0285 | **0.0285** |
+#### Large (100 files) 
+| Pair (Path A ↔ Path B) | Score (Large) |
+| :--- | ---: |
+| `lead to` ↔ `result in` | **0.1536** |
+| `die from` ↔ `die of` | **0.1309** |
+| `protect against` ↔ `protect from` | **0.1075** |
+| `consist of` ↔ `contain` | **0.0983** |
+| `affect` ↔ `attack` | **0.0285** |
 
-**Small run:** only one true positive was found, `affect` ↔ `attack`, present in both the large and small experiments.
+#### Small (10 files)
+| Pair (Path A ↔ Path B) | Score (Small) |
+| :--- | ---: |
+| `die from` ↔ `die of` | **0.1243** |
+| `consist of` ↔ `contain` | **0.1036** |
+| `covert into` ↔ `convert to` | **0.0665** |
+| `differ from` ↔ `distinguish from` | **0.0570** |
+| `eliminate` ↔ `eradicate` | **0.0501** |
 
 ### 4.2 False Positives (System: Yes, Truth: No)
-| Pair (Path A ↔ Path B) | Score (Large) | Score (Small) |
-| :--- | ---: | ---: |
-| `contract` (dobj) ↔ `die of` | 0.0655 | - |
-| `die of` ↔ `suffer from` | 0.0580 | - |
-| `contract` (dobj) ↔ `die from` | 0.0418 | - |
-| `avoid in` ↔ `use in` | 0.0331 | - |
-| `die of` ↔ `get` (dobj) | 0.0264 | - |
+#### Large (100 files)
+| Pair (Path A ↔ Path B) | Score (Large) |
+| :--- | ---: |
+| `contract` ↔ `die of` | **0.0655** |
+| `die of` ↔ `suffer from` | **0.0580** |
+| `contract` ↔ `die from` | **0.0418** |
+| `avoid in` ↔ `use in` | **0.0331** |
+| `die of` ↔ `get` | **0.0264** |
 
-**Small run:** no false positives were found above the optimal threshold.
+#### Small (10 files)
+| Pair (Path A ↔ Path B) | Score (Small) |
+| :--- | ---: |
+| `constrict` ↔ `dilate` | **0.1055** |
+| `contract` ↔ `die of` | **0.0710** |
+| `contract` ↔ `die from` | **0.0284** |
+| `develop` ↔ `die of` | **0.0290** |
 
 ### 4.3 True Negatives (System: No, Truth: No)
 All examples below have score **0.0**, meaning the system correctly rejected them (or never produced them) in both runs.
@@ -110,13 +126,9 @@ These are gold positive pairs that the system missed (score 0.0). In both runs, 
 | `give` ↔ `produced by` | 0.0000 |
 | `break` ↔ `convert`| 0.0000 |
 
-**Common FN pattern:** even with 100 files, many test-set templates are still rare, and DIRT’s distributional overlap requirement (shared slot fillers across paths) often fails to trigger.
-
 ## 5. Conclusion
-The implementation successfully reproduces the key DIRT behavior: **very high precision** with **recall strongly dependent on corpus size**.
+The results clearly demonstrate the data-dependent nature of the DIRT algorithm: precision remains high across settings, while recall improves dramatically as the corpus grows.
 
-* The **Small (10 files)** run is dominated by data sparsity: only **5 scored pairs** were produced, yielding **Precision = 1.0** but **Recall ≈ 0.0008** and **F1 ≈ 0.0017** at the best threshold (0.028530).
-* The **Large (100 files)** run produces far more candidate similarities (**538 scored pairs**) and reaches **Recall ≈ 0.1214** while maintaining **Precision ≈ 0.9797**, for **F1 ≈ 0.2161** at threshold 0.004192.
-* The error analysis shows the classic DIRT failure mode: **contextual relatedness** (especially in medical domains) can look like synonymy, producing false positives such as `contract` ↔ `die of` and `die of` ↔ `suffer from`.
+In the small experiment (10 files), the system identifies only 5–17 predicate pairs with non-zero similarity (depending on filtering), reflecting severe data sparsity. At the optimal threshold (0.025647), the model achieves Precision ≈ 0.769 (77%), but Recall ≈ 0.0084 (0.8%), resulting in a low F1 score of 0.0166. This indicates that although most predicted pairs are correct, the system recovers less than 1% of the gold paraphrase relations. The Precision–Recall curve for this setting is highly jagged and compressed near the recall axis, consistent with the very small number of scored pairs.
 
-Overall, scaling the corpus substantially improves coverage, but fully addressing the remaining false negatives and relatedness-based false positives would likely require either much larger corpora or additional constraints/features (e.g., directional entailment checks, selectional preference modeling, or explicit negative evidence).
+In contrast, the large experiment (100 files) produces 538 candidate predicate pairs, an increase of two orders of magnitude over the small run. With a much lower optimal threshold (0.004192), the system reaches Precision ≈ 0.9797 (98%) while achieving Recall ≈ 0.1214 (12.14%), yielding an F1 score of 0.2161. This substantial improvement in recall confirms that DIRT’s ability to identify paraphrastic relations depends strongly on observing sufficient shared argument contexts, which only emerge at larger corpus scales.
