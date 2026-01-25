@@ -32,13 +32,14 @@ The table below summarizes the performance metrics calculated at the optimal F1 
 ### Small Dataset Graph
 * **Observation:** This PR curve for the small experiment shows it achieves moderate–high precision on the few pairs it scores highly, but it retrieves only a tiny fraction of the true positives.
 * **Analysis:** in the small run, DIRT is producing only a small number of non-zero similarity pairs, and the ones it does produce are often correct, but coverage is weak.
-* <img width="800" height="600" alt="precision_recall_curve" src="https://github.com/user-attachments/assets/8138a9ab-79be-4174-a695-2eb8c5720e72" />
+ <img width="800" height="600" alt="precision_recall_curve (2)" src="https://github.com/user-attachments/assets/2322eb42-cae1-4611-9a53-a31245f5ee1f" />
+
 
 
 ### Large Dataset Graph
 * **Observation:** The graph shows a curve that starts at high precision (1.0) and descends in "steps."
 * **Analysis:** The curve maintains near-perfect precision for the initial segment, indicating that the highest-scored pairs are exclusively correct. The "steps" or drops in the curve represent specific threshold points where false positives (e.g., antonyms or contextually related but non-synonymous words) are introduced into the result set. The fact that the curve extends to ~0.12 Recall (unlike the small dataset) confirms the improved coverage provided by the larger corpus.
-  <img width="800" height="600" alt="precision_recall_curve (2)" src="https://github.com/user-attachments/assets/f1a343a8-ca4e-43bd-9650-5734ebf3c752" />
+  <img width="800" height="600" alt="precision_recall_curve (1)" src="https://github.com/user-attachments/assets/2c590502-2d73-4db6-b381-fe4982d3feb7" />
 
 
 
