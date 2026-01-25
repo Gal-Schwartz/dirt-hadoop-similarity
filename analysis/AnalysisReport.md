@@ -112,18 +112,18 @@ These are gold positive pairs that the system missed (score 0.0). In both runs, 
 #### Large (100 files) — sample FNs
 | Pair (Path A ↔ Path B) | Score (Large) |
 | :--- | ---: |
-| `give for` ↔ `require` (dobj) | 0.0000 |
+| `give for` ↔ `require` | 0.0000 |
 | `relieve with` ↔ `take for` | 0.0000 |
-| `accompany` ↔ `cause` (dobj) | 0.0000 |
-| `protect from` ↔ `reduce` (dobj) | 0.0000 |
+| `accompany` ↔ `cause` | 0.0000 |
+| `protect from` ↔ `reduce` | 0.0000 |
 | `associate with` ↔ `attend with` | 0.0000 |
 
 #### Small (10 files) — sample FNs
 | Pair (Path A ↔ Path B) | Score (Small) |
 | :--- | ---: |
 | `transmit` ↔ `transmitted by` | 0.0000 |
-| `control` ↔ `reduce` (dobj) | 0.0000 |
-| `have` ↔ `use` (dobj) | 0.0000 |
+| `control` ↔ `reduce` | 0.0000 |
+| `have` ↔ `use` | 0.0000 |
 | `give` ↔ `produced by` | 0.0000 |
 | `break` ↔ `convert`| 0.0000 |
 
